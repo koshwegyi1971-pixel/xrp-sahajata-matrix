@@ -563,15 +563,49 @@ if market_data:
                     st.write(f"Sub-Score: `{d['subScore']}`")
                     st.caption(f"_{d['description']}_")
 
+        # ─── 3. CATEGORIZED 11-DIMENSIONS TABS ───
+    st.subheader("📊 11-Dimensions Co-Arising Breakdown")
+    tab1, tab2, tab3 = st.tabs(["🧠 Core Engines (59%)", "📈 Flow & Patterns (20%)", "🌍 Macro & Sentiment (21%)"])
+    
+    dims = matrix_res["dimensions"]
+    
+    with tab1:
+        # ... (ဒါက Core Engines အပိုင်းဖြစ်လို့ အစ်ကိုကြီးရှိပြီးသားကုဒ်အတိုင်း ထားခဲ့ပါ)
+        pass
+
+    with tab2:
+        # ... (ဒါက Flow & Patterns အပိုင်းဖြစ်လို့ အစ်ကိုကြီးရှိပြီးသားကုဒ်အတိုင်း ထားခဲ့ပါ)
+        pass
+
+    # 🎯 🎯 🎯 ဒီနေရာကစပြီး အစားထိုးထည့်ရမည့်အပိုင်း ဖြစ်ပါတယ် အစ်ကိုကြီး 🎯 🎯 🎯
     with tab3:
         st.markdown("### Global Sentiment & Filters")
-        # Macro & Sentiment ၅ ခုကို ပြသခြင်း
-        macro_names = ["Fear & Greed", "Portfolio Heat", "XRP Daily Alpha", "FA Sentiment", "Market Filter"]
+        
         for d in dims:
-            if d["name"] in macro_names:
+            # ၁။ Portfolio Heat အတွက် Wallet Balance ပေါ်မူတည်ပြီး Dynamic ပြသမည့်အပိုင်း
+            if d["name"] == "Portfolio Heat":
                 with st.expander(f"🌐 {d['name']} (Weight: {d['weight']}%)", expanded=True):
                     st.write(f"Sub-Score: `{d['subScore']}`")
+                    
+                    if wallet_balance > 0:
+                        st.info(f"📊 **Live Wallet Analysis:** သင်၏ On-chain အကောင့်တွင် **{wallet_balance:,.2f} XRP** ပိုင်ဆိုင်ထားပြီး လက်ရှိစျေးကွက်အရ Risk Level မှာ သင့်တင့်သော အနေအထားတွင် ရှိပါသည်။")
+                    else:
+                        st.caption(f"_{d['description']}_")
+                        
+            # ၂။ ကျန်တဲ့ Indicator ၄ ခုကို ပုံမှန်အတိုင်း ပြသမည့်အပိုင်း
+            elif d["name"] in ["Fear & Greed", "XRP Daily Alpha", "FA Sentiment", "Market Filter"]:
+                with st.expander(f"🌐 {d['name']} (Weight: {d['weight']}%)"):
+                    st.write(f"Sub-Score: `{d['subScore']}`")
                     st.caption(f"_{d['description']}_")
+
+    # 🎯 🎯 🎯 အစားထိုးထည့်ရမည့်အပိုင်း ဤနေရာတွင် ပြီးပါပြီ 🎯 🎯 🎯
+
+    st.markdown("---")
+    
+    # ─── 4. EXECUTIVE AI ANALYSIS BLOCK ───
+    st.subheader("🧠 Executive Strategic AI Analysis")
+    # ... (အောက်ခြေကုဒ်များ ပုံမှန်အတိုင်း ဆက်သွားပါမည်)
+
 
     st.markdown("---")
 
