@@ -276,13 +276,12 @@ if market_data:
     st.progress(scs / 100)
     
     # Status Banner styled dynamically with color
-    st.markdown(
-        f"<div style='background-color:{color}; padding:15px; border-radius:8px; text-align:center; color:white; font-weight:bold; font-size:20px;'>"
+        st.markdown(
+        f"<div style='background-color:{color}; padding:15px; border-radius:5px; color:white;'>"
         f"STATE: {label} ({mult}x Accumulation Factor)"
-        f"</div>", 
-        unsafe_style=True
+        f"</div>",
+        unsafe_allow_html=True  # <- ဒီစာသားလေး အမှန်ပြင်ပေးရမှာ ဖြစ်ပါတယ်ဗျာ
     )
-
     st.markdown(" ")
 
     # Detailed Indicators Breakdown Block
