@@ -328,7 +328,6 @@ def get_xrp_advanced_data():
 
     return price, high, low, change, source, funding_rate, ctx
     def get_xrpl_wallet_balance(wallet_address):
-    """
     XRPL Public RPC မှတစ်ဆင့် ပေးထားသော Address ၏ Live XRP Balance ကို ဆွဲယူပေးသည့် လုပ်ဆောင်ချက်
     """
     if not wallet_address or not wallet_address.startswith('r'):
