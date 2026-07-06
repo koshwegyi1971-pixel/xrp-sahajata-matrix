@@ -534,7 +534,34 @@ if market_data:
         f"</div>", 
         unsafe_allow_html=True
     )
+    # ====================================================================
+    # ─── 🔗 XRPL LIVE WALLET CONNECTION ───
+    # ====================================================================
+    st.sidebar.markdown("---")
+    st.sidebar.header("⚙️ XRPL Wallet Configuration")
+    
+    # ၁။ Sidebar တွင် Wallet Address ရိုက်ထည့်ရန် Input Box ဖန်တီးခြင်း
+    # (အစ်ကိုကြီး စမ်းသပ်ရလွယ်အောင် value="" နေရာမှာ မိမိ XRP Address ကို တစ်ခါတည်း ကြိုထည့်ထားပေးလို့ရပါတယ်)
+    wallet_address = st.sidebar.text_input(
+        "Enter XRP Wallet Address (r...)", 
+        value="", 
+        placeholder="rMv... ဆိုသော လိပ်စာကို ရိုက်ထည့်ပါ"
+    )
+    
+    # ၂။ Address ရှိမရှိ စစ်ဆေးပြီး Live Balance ကို ဆွဲယူခြင်း
+    if wallet_address and wallet_address.startswith('r'):
+        with st.sidebar.spinner("XRPL မှ Live Balance ကို ဆွဲယူနေပါသည်..."):
+            wallet_balance = get_xrpl_wallet_balance(wallet_address)
+        
+        # Balance အောင်မြင်စွာရပါက Sidebar တွင် အစိမ်းရောင် Box ဖြင့် ပြသမည်
+        st.sidebar.success(f"💰 Live Balance: {wallet_balance:,.2f} XRP")
+    else:
+        # Address မထည့်ရသေးပါက Balance ကို 0.0 အဖြစ် သတ်မှတ်ထားမည်
+        wallet_balance = 0.0
+        st.sidebar.info("💡 သင်၏ Live XRP Balance ကို ကြည့်လိုပါက Wallet Address ရိုက်ထည့်ပါ။")
 
+    st.sidebar.markdown("---")
+    # ====================================================================
     # ====================================================================
     # ─── 3. CATEGORIZED 11-DIMENSIONS TABS (Index-Based Perfect Split) ───
     # ====================================================================
