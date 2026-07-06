@@ -536,54 +536,84 @@ if market_data:
     )
 
     # ====================================================================
-        # ─── 3. CATEGORIZED 11-DIMENSIONS TABS ───
+    # ─── 3. CATEGORIZED 11-DIMENSIONS TABS (အကုန်ပေါ်စေမည့် Hybrid စနစ်) ───
+    # ====================================================================
     st.subheader("📊 11-Dimensions Co-Arising Breakdown")
     tab1, tab2, tab3 = st.tabs(["🧠 Core Engines (59%)", "📈 Flow & Patterns (20%)", "🌍 Macro & Sentiment (21%)"])
     
     dims = matrix_res["dimensions"]
     
-    # --- TAB 1: Core Engines ---
+    # 💡 စာလုံးအမှားအယွင်းကြောင့် ဒေတာမပျောက်စေရန် ကြိုတင်ခွဲဝေခြင်း စနစ်
+    tab1_dims = []
+    tab2_dims = []
+    tab3_dims = []
+    
+    for i, d in enumerate(dims):
+        name_lower = d.get("name", "").lower()
+        
+        # (က) Macro နှင့် Portfolio Heat စာလုံးပါလျှင် Tab 3 သို့ထည့်မည်
+        if any(k in name_lower for k in ["heat", "fear", "alpha", "sentiment", "filter"]):
+            tab3_dims.append(d)
+        # (ခ) Core Engines စာလုံးပါလျှင် Tab 1 သို့ထည့်မည်
+        elif any(k in name_lower for k in ["sahaj", "paccaya", "nissaya", "upanissaya", "purej", "core", "structural", "momentum", "lead"]):
+            tab1_dims.append(d)
+        # (ဂ) Flow & Patterns စာလုံးပါလျှင် Tab 2 သို့ထည့်မည်
+        elif any(k in name_lower for k in ["pacchaj", "āsevana", "asevana", "kamma", "vipā", "vipa", "lag", "velocity", "volatility", "execution"]):
+            tab2_dims.append(d)
+        # (ဃ) Fallback: စာလုံးလုံးဝမကိုက်ညီပါက ၎င်း၏အစဉ်လိုက် (Index) အတိုင်း မပျောက်ပျက်အောင် အလိုအလျောက်ခွဲမည်
+        else:
+            if i < 5:        # ပထမ ၅ ခုကို Core ထဲထည့်မည်
+                tab1_dims.append(d)
+            elif i < 9:      # နောက် ၄ ခုကို Flow ထဲထည့်မည်
+                tab2_dims.append(d)
+            else:            # ကျန်တာကို Macro ထဲထည့်မည်
+                tab3_dims.append(d)
+
+    # --- TAB 1: Core Engines ပြသခြင်း ---
     with tab1:
         st.markdown("### Core Matrix Engines")
-        for d in dims:
-            name_lower = d["name"].lower()
-            # စာလုံးအတိုအရှည်မရွေး Keyword ပါဝင်တာနဲ့ တန်းပြပေးမည့်စနစ်
-            if any(k in name_lower for k in ["sahaj", "paccaya", "nissaya", "upanissaya", "purej", "core", "structural", "momentum", "lead"]):
+        if tab1_dims:
+            for d in tab1_dims:
                 with st.expander(f"🌐 {d['name']} (Weight: {d['weight']}%)"):
                     st.write(f"Sub-Score: `{d['subScore']}`")
                     st.caption(f"_{d['description']}_")
+        else:
+            st.info("ဤ Tab အတွက် ဒေတာမရှိသေးပါ။")
 
-    # --- TAB 2: Flow & Patterns ---
+    # --- TAB 2: Flow & Patterns ပြသခြင်း ---
     with tab2:
         st.markdown("### Market Flow & Structural Patterns")
-        for d in dims:
-            name_lower = d["name"].lower()
-            if any(k in name_lower for k in ["pacchaj", "āsevana", "asevana", "kamma", "vipā", "vipa", "lag", "velocity", "volatility", "execution"]):
+        if tab2_dims:
+            for d in tab2_dims:
                 with st.expander(f"🌐 {d['name']} (Weight: {d['weight']}%)"):
                     st.write(f"Sub-Score: `{d['subScore']}`")
                     st.caption(f"_{d['description']}_")
+        else:
+            st.info("ဤ Tab အတွက် ဒေတာမရှိသေးပါ။")
 
-    # --- TAB 3: Macro & Sentiment ---
+    # --- TAB 3: Macro & Sentiment ပြသခြင်း ---
     with tab3:
         st.markdown("### Global Sentiment & Filters")
-        for d in dims:
-            name_lower = d["name"].lower()
-            # Portfolio Heat အတွက် Live Wallet Balance နှင့် တွဲပြမည်
-            if "heat" in name_lower:
-                with st.expander(f"🌐 {d['name']} (Weight: {d['weight']}%)", expanded=True):
-                    st.write(f"Sub-Score: `{d['subScore']}`")
-                    if wallet_balance > 0:
-                        st.info(f"📊 **Live Wallet Analysis:** သင်၏ On-chain အကောင့်တွင် **{wallet_balance:,.2f} XRP** ပိုင်ဆိုင်ထားပြီး လက်ရှိစျေးကွက်အရ Risk Level မှာ သင့်တင့်သော အနေအထားတွင် ရှိပါသည်။")
-                    else:
+        if tab3_dims:
+            for d in tab3_dims:
+                name_lower = d.get("name", "").lower()
+                # Portfolio Heat ဖြစ်ပါက Wallet Analysis ပါ တွဲပြမည်
+                if "heat" in name_lower:
+                    with st.expander(f"🌐 {d['name']} (Weight: {d['weight']}%)", expanded=True):
+                        st.write(f"Sub-Score: `{d['subScore']}`")
+                        if wallet_balance > 0:
+                            st.info(f"📊 **Live Wallet Analysis:** သင်၏ On-chain အကောင့်တွင် **{wallet_balance:,.2f} XRP** ပိုင်ဆိုင်ထားပြီး လက်ရှိစျေးကွက်အရ Risk Level မှာ သင့်တင့်သော အနေအထားတွင် ရှိပါသည်။")
+                        else:
+                            st.caption(f"_{d['description']}_")
+                else:
+                    with st.expander(f"🌐 {d['name']} (Weight: {d['weight']}%)"):
+                        st.write(f"Sub-Score: `{d['subScore']}`")
                         st.caption(f"_{d['description']}_")
-                        
-            # ကျန်ရှိသော Macro Indicators များကို ပြမည်
-            elif any(k in name_lower for k in ["fear", "alpha", "sentiment", "filter"]):
-                with st.expander(f"🌐 {d['name']} (Weight: {d['weight']}%)"):
-                    st.write(f"Sub-Score: `{d['subScore']}`")
-                    st.caption(f"_{d['description']}_")
+        else:
+            st.info("ဤ Tab အတွက် ဒေတာမရှိသေးပါ။")
 
     st.markdown("---")
+
     
     # ====================================================================
     # ─── 4. EXECUTIVE AI ANALYSIS BLOCK (ဖိုင်တစ်ခုလုံးမှာ ဒီတစ်ခါပဲ လာရပါမယ်) ───
