@@ -490,6 +490,32 @@ market_data = get_xrp_advanced_data()
 if market_data:
     price, high, low, change, source, funding, ctx = market_data
     matrix_res = compute_sahajata_score(ctx)
+# ─── SIDEBAR CONFIGURATION (ဘေးဘားတွင် Wallet လိပ်စာ ထည့်ရန်နေရာ) ───
+st.sidebar.header("🔑 Wallet Configuration")
+# အစ်ကိုကြီး၏ XRPL Address ကို value နေရာတွင် ကြိုတင်ထည့်ထားနိုင်ပါသည်
+target_wallet = st.sidebar.text_input(
+    "XRP On-Chain Address", 
+    value="rYourActualXRPWalletAddressHere...",
+    help="မိမိ၏ r-address ကို ထည့်ပါ။ Secret Key များ ထည့်ရန်မလိုပါ။"
+)
+
+# Live Data များ ရယူပြီးချိန်တွင် Wallet ဒေတာကိုပါ ဆွဲယူမည်
+if market_data:
+    price, high, low, change, source, funding, ctx = market_data
+    
+    # Wallet Balance ကို Blockchain ပေါ်မှ ဆွဲယူခြင်း
+    wallet_balance = get_xrpl_wallet_balance(target_wallet)
+    portfolio_value_usd = wallet_balance * price  # လက်ရှိ ဒေါ်လာတန်ဖိုး တွက်ချက်ခြင်း
+
+    # ─── 1. HERO SECTION (Main Metrics Grid တွင် Wallet ပြသခြင်း) ───
+    m1, m2, m3, m4 = st.columns(4)  # ကတ်ပြား ၄ ခုအဖြစ် တိုးချဲ့လိုက်ပါသည်
+    m1.metric("💵 XRP Price", f"${price:.4f}", f"{change:+.2f}%")
+    m2.metric("⏳ Funding Rate", funding)
+    m3.metric("💼 XRP Balance", f"{wallet_balance:,.2f} XRP")
+    m4.metric("💰 Wallet Value", f"${portfolio_value_usd:,.2f}")
+
+    st.markdown("---")
+
 
     # ─── 1. HERO SECTION (Main Metrics Grid) ───
     m1, m2, m3 = st.columns(3)
