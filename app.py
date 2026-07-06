@@ -536,8 +536,7 @@ if market_data:
     )
 
     # ====================================================================
-    # ─── 3. CATEGORIZED 11-DIMENSIONS TABS (ဒါက တစ်ခုပဲ ရှိရပါမယ်) ───
-    # ====================================================================
+        # ─── 3. CATEGORIZED 11-DIMENSIONS TABS ───
     st.subheader("📊 11-Dimensions Co-Arising Breakdown")
     tab1, tab2, tab3 = st.tabs(["🧠 Core Engines (59%)", "📈 Flow & Patterns (20%)", "🌍 Macro & Sentiment (21%)"])
     
@@ -547,7 +546,9 @@ if market_data:
     with tab1:
         st.markdown("### Core Matrix Engines")
         for d in dims:
-            if d["name"] in ["Sahajāta Core", "Paccaya Flow", "Nissaya Structural", "Upanissaya Momentum", "Purejāta Lead"]:
+            name_lower = d["name"].lower()
+            # စာလုံးအတိုအရှည်မရွေး Keyword ပါဝင်တာနဲ့ တန်းပြပေးမည့်စနစ်
+            if any(k in name_lower for k in ["sahaj", "paccaya", "nissaya", "upanissaya", "purej", "core", "structural", "momentum", "lead"]):
                 with st.expander(f"🌐 {d['name']} (Weight: {d['weight']}%)"):
                     st.write(f"Sub-Score: `{d['subScore']}`")
                     st.caption(f"_{d['description']}_")
@@ -556,17 +557,19 @@ if market_data:
     with tab2:
         st.markdown("### Market Flow & Structural Patterns")
         for d in dims:
-            if d["name"] in ["Pacchājāta Lag", "Āsevana Velocity", "Kamma Volatility", "Vipāka Execution"]:
+            name_lower = d["name"].lower()
+            if any(k in name_lower for k in ["pacchaj", "āsevana", "asevana", "kamma", "vipā", "vipa", "lag", "velocity", "volatility", "execution"]):
                 with st.expander(f"🌐 {d['name']} (Weight: {d['weight']}%)"):
                     st.write(f"Sub-Score: `{d['subScore']}`")
                     st.caption(f"_{d['description']}_")
 
-    # --- TAB 3: Macro & Sentiment (Wallet Balance နှင့် ပေါင်းစပ်ထားသည့်အပိုင်း) ---
+    # --- TAB 3: Macro & Sentiment ---
     with tab3:
         st.markdown("### Global Sentiment & Filters")
         for d in dims:
-            # 1. Portfolio Heat အတွက် Live Wallet Balance နှင့် တွဲပြမည်
-            if d["name"] == "Portfolio Heat":
+            name_lower = d["name"].lower()
+            # Portfolio Heat အတွက် Live Wallet Balance နှင့် တွဲပြမည်
+            if "heat" in name_lower:
                 with st.expander(f"🌐 {d['name']} (Weight: {d['weight']}%)", expanded=True):
                     st.write(f"Sub-Score: `{d['subScore']}`")
                     if wallet_balance > 0:
@@ -574,8 +577,8 @@ if market_data:
                     else:
                         st.caption(f"_{d['description']}_")
                         
-            # 2. ကျန်ရှိသော Macro Indicators များကို ပြမည်
-            elif d["name"] in ["Fear & Greed", "XRP Daily Alpha", "FA Sentiment", "Market Filter"]:
+            # ကျန်ရှိသော Macro Indicators များကို ပြမည်
+            elif any(k in name_lower for k in ["fear", "alpha", "sentiment", "filter"]):
                 with st.expander(f"🌐 {d['name']} (Weight: {d['weight']}%)"):
                     st.write(f"Sub-Score: `{d['subScore']}`")
                     st.caption(f"_{d['description']}_")
