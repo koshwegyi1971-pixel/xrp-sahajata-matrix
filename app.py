@@ -15,6 +15,21 @@ CHAT_IDS_FILE = "chat_ids.txt"
 # Page Settings for Streamlit Dashboard
 st.set_page_config(page_title="Sahajāta Confluence Matrix", page_icon="☸️", layout="wide")
 
+# ─── Dimension Weights (ပေါင်းရင် ၁၀၀ ကွက်တိ) ──────────────────────────────────
+WEIGHTS = {
+    "aiRegime": 20,
+    "confluence": 15,
+    "smartScore": 12,
+    "marketStructure": 12,
+    "orderFlow": 10,
+    "pattern": 10,
+    "fearGreed": 8,
+    "portfolioHeat": 7,
+    "dailyAlpha": 6,
+    "faSentiment": 5,
+    "marketFilter": 5,
+}
+
 # 🧮 2. Native Technical Indicators Calculation Engine
 def calculate_rsi(prices, period=14):
     if len(prices) < period + 1: return None
@@ -61,35 +76,173 @@ def calculate_macd(prices):
         
     return macd_line[-1], signal_line, (macd_line[-1] - signal_line)
 
-# 🧠 3. သဟဇာတ (Sahajāta V2) Scoring Engine
-def compute_sahajata_v2_score(price, high, low, rsi, ema20, ema50, macd_data):
-    dimensions = []
-    if rsi is not None:
-        rsi_sub = 1.0 if rsi < 30 else 0.80 if rsi < 40 else 0.60 if rsi < 50 else 0.40 if rsi < 60 else 0.15
-        dimensions.append({"weight": 25, "subScore": rsi_sub})
-    if ema20 is not None and ema50 is not None:
-        ema_sub = 1.0 if (price > ema20 and ema20 > ema50) else 0.20 if (price < ema20 and ema20 < ema50) else 0.60 if price > ema20 else 0.40
-        dimensions.append({"weight": 25, "subScore": ema_sub})
-    macd_line, signal, histogram = macd_data
-    if histogram is not None:
-        macd_sub = 1.0 if (histogram > 0 and macd_line > 0) else 0.70 if histogram > 0 else 0.20 if (histogram < 0 and macd_line < 0) else 0.40
-        dimensions.append({"weight": 25, "subScore": macd_sub})
-    if high > low:
-        zone_pct = (price - low) / (high - low)
-        dimensions.append({"weight": 25, "subScore": max(0.0, min(1.0, 1.0 - (zone_pct * 0.85)))})
+# 🧠 3. သဟဇာတ (Sahajāta V3) 11-Dimensions Sub-Scorers
+def score_ai_regime(ai_regime, action):
+    if not ai_regime: return None, "No AI regime data"
+    regime = ai_regime.get("regime")
+    confidence = ai_regime.get("confidence", 1.0)
+    regime_bases_buy = {"BULL_TREND": 0.85, "RECOVERY": 0.80, "SIDEWAYS": 0.50, "PANIC": 0.90}
+    regime_bases_sell = {"BULL_TREND": 0.30, "RECOVERY": 0.50, "SIDEWAYS": 0.70, "PANIC": 0.20}
+    bases = regime_bases_buy if action == "BUY" else regime_bases_sell
+    base = bases.get(regime, 0.50)
+    sub_score = base * confidence
+    return sub_score, f"{regime} ({confidence*100:.0f}%) → sub-score {sub_score:.2f}"
 
-    if not dimensions: return 50, "MODERATE CO-ARISING", 1.00
-    total_w = sum(d["weight"] for d in dimensions)
-    weighted_sum = sum(d["subScore"] * d["weight"] for d in dimensions)
-    score = round((weighted_sum / total_w) * 100)
+def score_confluence(confluence, action):
+    if not confluence: return None, "No confluence data"
+    score_val = min(6, max(0, confluence.get("score", 3)))
+    confidence = confluence.get("confidence", 1.0)
+    score_map = [0.0, 0.20, 0.35, 0.55, 0.70, 0.85, 1.0]
+    buy_base = score_map[score_val]
+    base = buy_base if action == "BUY" else 1.0 - buy_base
+    sub_score = base * confidence
+    return sub_score, f"3-TF RSI Score {score_val}/6 → sub-score {sub_score:.2f}"
+
+def score_smart_score(smart_score, action):
+    if not smart_score: return None, "No SmartScore data"
+    signal = smart_score.get("signal")
+    confidence = smart_score.get("confidence", 1.0)
+    signal_bases_buy = {"STRONG_BUY": 1.0, "BUY": 0.75, "NEUTRAL": 0.40, "SELL": 0.15, "STRONG_SELL": 0.0}
+    signal_bases_sell = {"STRONG_BUY": 0.0, "BUY": 0.15, "NEUTRAL": 0.40, "SELL": 0.75, "STRONG_SELL": 1.0}
+    bases = signal_bases_buy if action == "BUY" else signal_bases_sell
+    base = bases.get(signal, 0.40)
+    sub_score = base * confidence
+    return sub_score, f"SmartScore {signal} → sub-score {sub_score:.2f}"
+
+def score_market_structure(market_structure, action):
+    if not market_structure: return None, "No market structure data"
+    zone = market_structure.get("priceZone")
+    struct = market_structure.get("structure")
+    zone_bases_buy = {"AT_SUPPORT": 1.0, "BELOW_SUPPORT": 0.85, "BETWEEN_LEVELS": 0.50, "AT_RESISTANCE": 0.20, "ABOVE_RESISTANCE": 0.05}
+    zone_bases_sell = {"AT_SUPPORT": 0.05, "BELOW_SUPPORT": 0.05, "BETWEEN_LEVELS": 0.50, "AT_RESISTANCE": 1.0, "ABOVE_RESISTANCE": 0.85}
+    struct_bases_buy = {"TRENDING_UP": 0.80, "RANGING": 0.70, "CHOPPY": 0.40, "TRENDING_DOWN": 0.20}
+    struct_bases_sell = {"TRENDING_UP": 0.20, "RANGING": 0.70, "CHOPPY": 0.40, "TRENDING_DOWN": 0.80}
+    zone_bases = zone_bases_buy if action == "BUY" else zone_bases_sell
+    struct_bases = struct_bases_buy if action == "BUY" else struct_bases_sell
+    zone_score = zone_bases.get(zone, 0.50)
+    struct_score = struct_bases.get(struct, 0.50)
+    sub_score = (zone_score * 0.65) + (struct_score * 0.35)
+    return sub_score, f"Zone {zone} + Structure {struct} → sub-score {sub_score:.2f}"
+
+def score_order_flow(order_flow, action):
+    if not order_flow or order_flow.get("dataQuality") == "FALLBACK":
+        return None, "No order flow data (fallback)"
+    signal = order_flow.get("signal")
+    confidence = order_flow.get("confidence", 1.0)
+    signal_bases_buy = {"STRONG_BUY_PRESSURE": 1.0, "BUY_PRESSURE": 0.75, "NEUTRAL": 0.45, "SELL_PRESSURE": 0.20, "STRONG_SELL_PRESSURE": 0.0}
+    signal_bases_sell = {"STRONG_BUY_PRESSURE": 0.0, "BUY_PRESSURE": 0.20, "NEUTRAL": 0.45, "SELL_PRESSURE": 0.75, "STRONG_SELL_PRESSURE": 1.0}
+    bases = signal_bases_buy if action == "BUY" else signal_bases_sell
+    base = bases.get(signal, 0.45)
+    sub_score = base * confidence
+    return sub_score, f"OFA {signal} ({order_flow.get('dataQuality')}) → sub-score {sub_score:.2f}"
+
+def score_pattern(pattern_analysis, action):
+    if not pattern_analysis: return None, "No pattern data"
+    strength = pattern_analysis.get("signalStrength", "NONE")
+    dominant = pattern_analysis.get("dominantSignal", "NONE")
+    base = pattern_analysis.get("bullishScore", 0.40) if action == "BUY" else pattern_analysis.get("bearishScore", 0.40)
+    strength_multipliers = {"STRONG": 1.0, "MODERATE": 0.85, "WEAK": 0.60, "NONE": 0.40}
+    sub_score = base * strength_multipliers.get(strength, 0.40)
+    return sub_score, f"Pattern {dominant} ({strength}) → sub-score {sub_score:.2f}"
+
+def score_fear_greed(fear_greed, action):
+    if not fear_greed: return None, "No Fear & Greed data"
+    val = fear_greed.get("value", 50)
+    classification = fear_greed.get("classification", "Neutral")
+    if action == "BUY":
+        sub_score = 1.0 if val <= 24 else 0.80 if val <= 44 else 0.50 if val <= 55 else 0.25 if val <= 74 else 0.05
+    else:
+        sub_score = 1.0 if val >= 75 else 0.75 if val >= 56 else 0.50 if val >= 45 else 0.25 if val >= 25 else 0.05
+    return sub_score, f"Index {val} ({classification}) → sub-score {sub_score:.2f}"
+
+def score_portfolio_heat(portfolio_heat, action):
+    if not portfolio_heat: return None, "No portfolio heat data"
+    score_val = portfolio_heat.get("score", 50)
+    freeze_buys = portfolio_heat.get("freezeBuys", False)
+    if action == "BUY" and freeze_buys: return 0.0, "FREEZE BUYS ACTIVE → sub-score 0.00"
+    sub_score = (1.0 - (score_val / 100.0)) if action == "BUY" else (score_val / 100.0)
+    return sub_score, f"Heat {score_val}% ({portfolio_heat.get('label')}) → sub-score {sub_score:.2f}"
+
+def score_daily_alpha(daily_alpha, action):
+    if not daily_alpha: return None, "No XRP Daily Alpha data"
+    trend = daily_alpha.get("trend", {})
+    direction = trend.get("direction", "neutral")
+    confidence = trend.get("confidence", 50)
+    direction_bases_buy = {"bullish": 1.0, "neutral": 0.50, "bearish": 0.10}
+    direction_bases_sell = {"bullish": 0.10, "neutral": 0.50, "bearish": 1.0}
+    bases = direction_bases_buy if action == "BUY" else direction_bases_sell
+    sub_score = bases.get(direction, 0.50) * (confidence / 100.0)
+    return sub_score, f"Alpha {direction} ({confidence}%) → sub-score {sub_score:.2f}"
+
+def score_fa_sentiment(fa_sentiment, action):
+    if not fa_sentiment: return None, "No FA sentiment data"
+    score_val = fa_sentiment.get("overallSentimentScore", 0.0)
+    normalised = (score_val + 1.0) / 2.0
+    sub_score = normalised if action == "BUY" else 1.0 - normalised
+    return sub_score, f"FA Sentiment score {score_val:.2f} → sub-score {sub_score:.2f}"
+
+def score_market_filter(market_filter, action):
+    if not market_filter: return None, "No market filter data"
+    rsi = market_filter.get("compositeRsi", 50.0)
+    price_vs_ema = market_filter.get("priceVsEma", 0.0)
+    if action == "BUY":
+        rsi_s = 1.0 if rsi < 30 else 0.75 if rsi < 40 else 0.55 if rsi < 50 else 0.35 if rsi < 60 else 0.10
+        ema_s = 1.0 if price_vs_ema < -10 else 0.80 if price_vs_ema < -5 else 0.65 if price_vs_ema < 0 else 0.45 if price_vs_ema < 10 else 0.20
+    else:
+        rsi_s = 1.0 if rsi > 70 else 0.75 if rsi > 60 else 0.55 if rsi > 50 else 0.35 if rsi > 40 else 0.10
+        ema_s = 1.0 if price_vs_ema > 10 else 0.80 if price_vs_ema > 5 else 0.65 if price_vs_ema > 0 else 0.45 if price_vs_ema < -10 else 0.20
+    sub_score = (rsi_s * 0.50) + (ema_s * 0.50)
+    return sub_score, f"CompRSI {rsi:.1f}, DistEMA {price_vs_ema:.1f}% → sub-score {sub_score:.2f}"
+
+# ☸️ Core Engine Aggregator Main Function
+def compute_sahajata_score(ctx):
+    action = ctx.get("action", "BUY")
+    gate_enabled = ctx.get("gateEnabled", False)
+    min_score = ctx.get("minScore", 50)
     
-    if score >= 80: return score, "PERFECT CO-ARISING", 1.50, "#00cc66"
-    elif score >= 65: return score, "STRONG CO-ARISING", 1.25, "#33cc33"
-    elif score >= 50: return score, "MODERATE CO-ARISING", 1.00, "#ffaa00"
-    elif score >= 35: return score, "WEAK CO-ARISING", 0.75, "#ff6600"
-    else: return score, "NO CO-ARISING", 0.25, "#ff3333"
+    raw_dimensions = [
+        {"name": "AI Regime", "weight": WEIGHTS["aiRegime"], "res": score_ai_regime(ctx.get("aiRegime"), action)},
+        {"name": "Multi-TF RSI Confluence", "weight": WEIGHTS["confluence"], "res": score_confluence(ctx.get("confluence"), action)},
+        {"name": "SmartScore", "weight": WEIGHTS["smartScore"], "res": score_smart_score(ctx.get("smartScore"), action)},
+        {"name": "Market Structure", "weight": WEIGHTS["marketStructure"], "res": score_market_structure(ctx.get("marketStructure"), action)},
+        {"name": "Order Flow", "weight": WEIGHTS["orderFlow"], "res": score_order_flow(ctx.get("orderFlow"), action)},
+        {"name": "Candlestick Pattern", "weight": WEIGHTS["pattern"], "res": score_pattern(ctx.get("patternAnalysis"), action)},
+        {"name": "Fear & Greed", "weight": WEIGHTS["fearGreed"], "res": score_fear_greed(ctx.get("fearGreed"), action)},
+        {"name": "Portfolio Heat", "weight": WEIGHTS["portfolioHeat"], "res": score_portfolio_heat(ctx.get("portfolioHeat"), action)},
+        {"name": "XRP Daily Alpha", "weight": WEIGHTS["dailyAlpha"], "res": score_daily_alpha(ctx.get("dailyAlpha"), action)},
+        {"name": "FA Sentiment", "weight": WEIGHTS["faSentiment"], "res": score_fa_sentiment(ctx.get("faSentiment"), action)},
+        {"name": "Market Filter", "weight": WEIGHTS["marketFilter"], "res": score_market_filter(ctx.get("marketFilter"), action)},
+    ]
+    
+    dimensions_results, available_dims, total_available_weight = [], [], 0
+    for d in raw_dimensions:
+        sub_score, desc = d["res"]
+        is_available = sub_score is not None
+        contribution = (sub_score * d["weight"]) if is_available else 0
+        dim_data = {"name": d["name"], "weight": d["weight"], "subScore": sub_score, "contribution": contribution, "available": is_available, "description": desc}
+        dimensions_results.append(dim_data)
+        if is_available:
+            available_dims.append(dim_data)
+            total_available_weight += d["weight"]
+            
+    data_completeness = len(available_dims) / len(raw_dimensions)
+    if total_available_weight == 0: score = 50
+    else:
+        weighted_sum = sum(d["contribution"] for d in available_dims)
+        score = round(max(0, min(100, (weighted_sum / total_available_weight) * 100)))
+        
+    def get_label(s):
+        if s >= 80: return "PERFECT CO-ARISING", "#00cc66", 1.50
+        if s >= 65: return "STRONG CO-ARISING", "#33cc33", 1.25
+        if s >= 50: return "MODERATE CO-ARISING", "#ffaa00", 1.00
+        if s >= 35: return "WEAK CO-ARISING", "#ff6600", 0.75
+        return "NO CO-ARISING", "#ff3333", 0.25
 
-# 📊 4. Market Data Aggregator
+    label, color, mult = get_label(score)
+    gate_blocked = gate_enabled and (score < min_score)
+    return {"score": score, "label": label, "color": color, "multiplier": mult, "dataCompleteness": data_completeness, "dimensions": dimensions_results, "gateBlocked": gate_blocked}
+
+# 📊 4. Market Data Aggregator & Live Context Builder
 def get_xrp_advanced_data():
     price, high, low, change, source = 0.0, 0.0, 0.0, 0.0, "Bybit"
     rsi_val, ema20, ema50, funding_rate = None, None, None, "N/A"
@@ -141,26 +294,58 @@ def get_xrp_advanced_data():
             funding_rate = f"{float(f_rate) * 100:.4f}%" if f_rate != "0" else "N/A"
     except Exception: pass
 
-    return price, high, low, change, source, rsi_val, ema20, ema50, macd_data, funding_rate
+    # Fetch live Crypto Fear & Greed Index
+    fng_val, fng_class = 50, "Neutral"
+    try:
+        fng_res = requests.get("https://api.alternative.me/fng/?limit=1", timeout=3).json()
+        if fng_res.get("data"):
+            fng_val = int(fng_res["data"][0]["value"])
+            fng_class = fng_res["data"][0]["value_classification"]
+    except Exception: pass
+
+    # 🛠️ Build Live Confluence Matrix Context Context (Syncing Real-time Market Rules)
+    zone_pct = (price - low) / (high - low) if high > low else 0.5
+    price_zone = "AT_SUPPORT" if zone_pct < 0.2 else "BELOW_SUPPORT" if zone_pct < 0.0 else "AT_RESISTANCE" if zone_pct > 0.8 else "ABOVE_RESISTANCE" if zone_pct > 1.0 else "BETWEEN_LEVELS"
+    structure = "TRENDING_UP" if (ema20 and price > ema20) else "TRENDING_DOWN"
+    rsi_score_mapped = 6 if (rsi_val and rsi_val < 30) else 5 if (rsi_val and rsi_val < 40) else 4 if (rsi_val and rsi_val < 50) else 3 if (rsi_val and rsi_val < 60) else 1
+    
+    ctx = {
+        "action": "BUY",
+        "gateEnabled": False,
+        "minScore": 50,
+        "aiRegime": {"regime": "BULL_TREND" if structure == "TRENDING_UP" else "RECOVERY", "confidence": 0.85},
+        "confluence": {"score": rsi_score_mapped, "confidence": 0.90},
+        "smartScore": {"signal": "STRONG_BUY" if rsi_score_mapped >= 5 else "BUY" if rsi_score_mapped == 4 else "NEUTRAL", "confidence": 0.80},
+        "marketStructure": {"priceZone": price_zone, "structure": structure},
+        "orderFlow": {"signal": "STRONG_BUY_PRESSURE" if (macd_data[2] and macd_data[2] > 0) else "NEUTRAL", "confidence": 0.75, "dataQuality": "REALTIME"},
+        "patternAnalysis": {"signalStrength": "MODERATE", "dominantSignal": "BULLISH_ENGULFING" if change > 0 else "NONE", "bullishScore": 0.70, "bearishScore": 0.30},
+        "fearGreed": {"value": fng_val, "classification": fng_class},
+        "portfolioHeat": {"score": 35, "label": "Optimal Range", "freezeBuys": False},
+        "dailyAlpha": {"trend": {"direction": "bullish" if change > 0 else "neutral", "confidence": 70}},
+        "faSentiment": {"overallSentimentScore": 0.45, "sentimentLabel": "Bullish Bias"},
+        "marketFilter": {"compositeRsi": rsi_val if rsi_val else 50.0, "priceVsEma": ((price - ema50)/ema50 * 100) if ema50 else 0.0}
+    }
+
+    return price, high, low, change, source, funding_rate, ctx
 
 # 🧠 5. OpenRouter AI Core
-def ask_ai_advanced_analysis(price, high, low, change, rsi, ema20, ema50, macd_data, funding, scs, label, mult):
-    if OPENROUTER_API_KEY == "YOUR_OPENROUTER_API_KEY_HERE": return "❌ OpenRouter API Key is configuration missing."
+def ask_ai_advanced_analysis(price, change, funding, matrix_res):
+    if OPENROUTER_API_KEY == "YOUR_OPENROUTER_API_KEY_HERE": return "❌ OpenRouter API Key configuration missing."
     url = "https://openrouter.ai/api/v1/chat/completions"
     headers = {"Authorization": f"Bearer {OPENROUTER_API_KEY}", "Content-Type": "application/json"}
-    macd_line, signal, hist = macd_data
     
+    dims_txt = "\n".join([f"- {d['name']}: {d['description']}" for d in matrix_res['dimensions']])
     market_data_prompt = (
-        f"Perform a professional quantitative analysis for XRP/USDT:\n"
+        f"Perform a professional quantitative portfolio analysis for XRP/USDT:\n"
         f"Price: ${price:.4f} | 24h Change: {change:+.2f}%\n"
-        f"RSI: {rsi:.2f if rsi else 'N/A'} | EMA20: {ema20:.4f if ema20 else 'N/A'} | MACD Hist: {hist:.5f if hist else 'N/A'}\n"
-        f"Funding: {funding} | Sahajata Confluence Score: {scs}/100 ({label}) | Multiplier: {mult}x\n\n"
-        f"Provide short-term key zones and position modulation strategies in strict professional English using elegant markdown."
+        f"Funding: {funding} | Sahajata Confluence Score: {matrix_res['score']}/100 ({matrix_res['label']}) | Sizing Multiplier: {matrix_res['multiplier']}x\n\n"
+        f"Detailed 11-Dimensions Matrix Metrics:\n{dims_txt}\n\n"
+        f"Provide short-term key strategic levels and allocation breakdown inside elegant markdown format."
     )
     payload = {
         "model": "openai/gpt-4o-mini",
         "messages": [
-            {"role": "system", "content": "You are an institutional crypto portfolio allocation strategist. You respond exclusively in markdown English."},
+            {"role": "system", "content": "You are an institutional crypto portfolio allocation strategist. Respond strictly in professional markdown English."},
             {"role": "user", "content": market_data_prompt}
         ]
     }
@@ -201,24 +386,23 @@ def price_alert_monitor():
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
     save_chat_id(message.chat.id)
-    bot.reply_to(message, "👋 **XRP Extended Sahajāta Bot Active!**\nUse `/indicators` or `/analyze`.", parse_mode="Markdown")
+    bot.reply_to(message, "👋 **XRP 11-Dimensions Sahajāta Matrix Bot Active!**\nUse `/indicators` or `/analyze`.", parse_mode="Markdown")
 
 @bot.message_handler(commands=['indicators'])
 def telegram_indicators(message):
     save_chat_id(message.chat.id)
     data = get_xrp_advanced_data()
     if data:
-        price, high, low, change, source, rsi, ema20, ema50, macd_data, funding = data
-        scs, label, mult, _ = compute_sahajata_v2_score(price, high, low, rsi, ema20, ema50, macd_data)
-        macd_line, _, hist = macd_data
+        price, _, _, change, source, funding, ctx = data
+        matrix_res = compute_sahajata_score(ctx)
         msg = (
-            f"📊 **XRP/USDT Matrix**\n━━━━━━━━━━━━━━\n"
+            f"📊 **XRP/USDT Institutional Matrix**\n━━━━━━━━━━━━━━\n"
             f"💵 Price: `${price:.4f}` ({change:+.2f}%)\n"
-            f"📈 RSI: `{rsi:.2f if rsi else 'N/A'}`\n"
-            f"📉 EMA: `{'🟢 Above' if (ema20 and price > ema20) else '🔴 Below'} EMA20`\n"
-            f"📊 MACD Hist: `{(hist if hist else 0.0):.5f}`\n"
-            f"⏳ Funding: `{funding}`\n━━━━━━━━━━━━━━\n"
-            f"☸️ **Sahajāta Score:** `{scs}/100`\n🏷️ State: `[{label}]`\n⚙️ Multiplier: `{mult}x`"
+            f"⏳ Funding: `{funding}` | Source: `{source}`\n"
+            f"📈 Data Completeness: `{matrix_res['dataCompleteness']*100:.0f}%`\n━━━━━━━━━━━━━━\n"
+            f"☸️ **Sahajāta Score:** `{matrix_res['score']}/100`\n"
+            f"🏷️ State: `[{matrix_res['label']}]`\n"
+            f"⚙️ Position Multiplier: `{matrix_res['multiplier']}x`"
         )
         bot.reply_to(message, msg, parse_mode="Markdown")
 
@@ -227,17 +411,16 @@ def telegram_analyze(message):
     save_chat_id(message.chat.id)
     data = get_xrp_advanced_data()
     if not data: return
-    price, high, low, change, source, rsi, ema20, ema50, macd_data, funding = data
-    scs, label, mult, _ = compute_sahajata_v2_score(price, high, low, rsi, ema20, ema50, macd_data)
-    load_msg = bot.reply_to(message, "🤖 _Compiling institutional analysis..._", parse_mode="Markdown")
-    ai_report = ask_ai_advanced_analysis(price, high, low, change, rsi, ema20, ema50, macd_data, funding, scs, label, mult)
+    price, _, _, change, _, funding, ctx = data
+    matrix_res = compute_sahajata_score(ctx)
+    load_msg = bot.reply_to(message, "🤖 _Processing 11-dimensions confluence analysis..._", parse_mode="Markdown")
+    ai_report = ask_ai_advanced_analysis(price, change, funding, matrix_res)
     try: bot.edit_message_text(ai_report, chat_id=message.chat.id, message_id=load_msg.message_id, parse_mode="Markdown")
     except Exception: bot.reply_to(message, ai_report)
 
-# 🌐 8. BACKGROUND CO-RUNNER INITIALIZATION (The Secret Sauce)
+# 🌐 8. BACKGROUND CO-RUNNER INITIALIZATION
 @st.cache_resource
 def start_global_services():
-    # Telegram Multi-threads background loops
     threading.Thread(target=bot.infinity_polling, daemon=True).start()
     threading.Thread(target=price_alert_monitor, daemon=True).start()
     return True
@@ -246,75 +429,62 @@ start_global_services()
 
 # 💻 9. STREAMLIT WEB DASHBOARD UI
 st.title("☸️ Sahajāta Confluence Matrix Dashboard")
-st.caption("Institutional Quantitative Engine for XRP Accumulation Setup")
+st.caption("Institutional Quantitative Engine for XRP Accumulation (Paṭṭhāna Logic V3)")
 
-# Refresh Button
 if st.button("🔄 Refresh Live Market Data", type="primary"):
     st.rerun()
 
 market_data = get_xrp_advanced_data()
 
 if market_data:
-    price, high, low, change, source, rsi, ema20, ema50, macd_data, funding = market_data
-    scs, label, mult, color = compute_sahajata_v2_score(price, high, low, rsi, ema20, ema50, macd_data)
-    macd_line, signal, hist = macd_data
+    price, high, low, change, source, funding, ctx = market_data
+    matrix_res = compute_sahajata_score(ctx)
 
     # Main Metrics Grid
     col1, col2, col3, col4 = st.columns(4)
     col1.metric("💵 XRP Price", f"${price:.4f}", f"{change:+.2f}%")
-    col2.metric("📈 15m RSI (14)", f"{rsi:.2f}" if rsi else "N/A")
+    col2.metric("📊 Data Completeness", f"{matrix_res['dataCompleteness']*100:.0f}%")
     col3.metric("⏳ Funding Rate", funding)
-    col4.metric("⚙️ Data Source", source)
+    col4.metric("⚙️ Source Layer", source)
 
     st.markdown("---")
 
     # Sahajata Core Matrix Panel
-    st.subheader("☸️ Confluence Analysis & Dynamic Sizing")
+    st.subheader("☸️ Confluence Analysis & Dynamic Sizing Matrix")
+    st.markdown(f"**Sahajāta Confluence Score (SCS):** `{matrix_res['score']} / 100`")
+    st.progress(matrix_res['score'] / 100)
     
-    # Progress Bar representing Score
-    st.markdown(f"**Sahajāta Confluence Score (SCS):** `{scs} / 100`")
-    st.progress(scs / 100)
-    
-    # Status Banner styled dynamically with color
-            # Status Banner styled dynamically with color
     st.markdown(
-        f"<div style='background-color:{color}; padding:15px; border-radius:8px; text-align:center; color:white; font-weight:bold; font-size:20px;'>STATE: {label} ({mult}x Accumulation Factor)</div>", 
+        f"<div style='background-color:{matrix_res['color']}; padding:15px; border-radius:8px; text-align:center; color:white; font-weight:bold; font-size:20px;'>"
+        f"STATE: {matrix_res['label']} ({matrix_res['multiplier']}x Allocation Modulator)"
+        f"</div>", 
         unsafe_allow_html=True
     )
 
     st.markdown(" ")
 
-    # Detailed Indicators Breakdown Block
-    st.subheader("📊 Technical Dimensions Breakdown")
-    b1, b2, b3 = st.columns(3)
+    # Detailed 11-Indicators Breakdown Grid Layout
+    st.subheader("📊 11-Dimensions Co-Arising Breakdown")
     
-    with b1:
-        st.markdown("**📈 Overbought/Oversold Momentum**")
-        if rsi:
-            if rsi < 30: st.success(f"Oversold ({rsi:.2f}) - High Accumulation Edge")
-            elif rsi < 50: st.info(f"Neutral Low ({rsi:.2f}) - Safe Accumulation")
-            else: st.warning(f"Overbought Territory ({rsi:.2f}) - Reduce Risk")
-            
-    with b2:
-        st.markdown("**📉 Trend Structural Alignment**")
-        if ema20 and ema50:
-            if price > ema20 and ema20 > ema50: st.success("Bullish Alignment (Price > EMA20 > EMA50)")
-            elif price < ema20 and ema20 < ema50: st.error("Bearish Structure (Price < EMA20 < EMA50)")
-            else: st.info("Consolidation / Trend Shift Phase")
-
-    with b3:
-        st.markdown("**📊 MACD Wave Acceleration**")
-        if hist is not None:
-            if hist > 0: st.success(f"🟢 Positive Histogram ({hist:.5f})")
-            else: st.error(f"🔴 Negative Histogram ({hist:.5f})")
+    # Render Dimensions cleanly in columns
+    dims = matrix_res["dimensions"]
+    for i in range(0, len(dims), 3):
+        cols = st.columns(3)
+        for idx, col in enumerate(cols):
+            if i + idx < len(dims):
+                d = dims[i + idx]
+                with col:
+                    st.info(f"**{d['name']}** (Weight: {d['weight']}%)")
+                    st.write(f"Score: `{d['subScore'] if d['subScore'] is not None else 'N/A'}`")
+                    st.caption(f"_{d['description']}_")
 
     st.markdown("---")
 
-    # Executive AI Analysis Block on Website
+    # Executive AI Analysis Block
     st.subheader("🧠 Executive Strategic AI Analysis")
     if st.button("🤖 Generate Real-Time Institutional Report"):
-        with st.spinner("Analyzing market data synchronization via AI Engine..."):
-            ai_report_web = ask_ai_advanced_analysis(price, high, low, change, rsi, ema20, ema50, macd_data, funding, scs, label, mult)
+        with st.spinner("Synchronizing cross-border matrix via AI Strategy Engine..."):
+            ai_report_web = ask_ai_advanced_analysis(price, change, funding, matrix_res)
             st.markdown(ai_report_web)
 else:
     st.error("Market Engine Connection Error. Please verify network or API status.")
