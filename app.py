@@ -535,32 +535,6 @@ if market_data:
         unsafe_allow_html=True
     )
 
-    # ─── 3. CATEGORIZED 11-DIMENSIONS TABS (ဖုန်းအတွက် အထူးအဆင်ပြေမည့်စနစ်) ───
-    st.subheader("📊 11-Dimensions Co-Arising Breakdown")
-    tab1, tab2, tab3 = st.tabs(["🧠 Core Engines (59%)", "📈 Flow & Patterns (20%)", "🌍 Macro & Sentiment (21%)"])
-    
-    dims = matrix_res["dimensions"]
-    
-    with tab1:
-        st.markdown("### Primary Market Matrix")
-        # Core Engines ၄ ခုကို ပြသခြင်း
-        core_names = ["AI Regime", "Multi-TF RSI Confluence", "SmartScore", "Market Structure"]
-        for d in dims:
-            if d["name"] in core_names:
-                with st.expander(f"🔹 {d['name']} (Weight: {d['weight']}%)", expanded=True):
-                    st.write(f"Sub-Score: `{d['subScore']}`")
-                    st.caption(f"_{d['description']}_")
-
-    with tab2:
-        st.markdown("### Execution & Order Flow")
-        # Flow Engines ၂ ခုကို ပြသခြင်း
-        flow_names = ["Order Flow", "Candlestick Pattern"]
-        for d in dims:
-            if d["name"] in flow_names:
-                with st.expander(f"🔸 {d['name']} (Weight: {d['weight']}%)", expanded=True):
-                    st.write(f"Sub-Score: `{d['subScore']}`")
-                    st.caption(f"_{d['description']}_")
-
     # ====================================================================
     # ─── 3. CATEGORIZED 11-DIMENSIONS TABS (ဒါက တစ်ခုပဲ ရှိရပါမယ်) ───
     # ====================================================================
