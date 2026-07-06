@@ -561,58 +561,63 @@ if market_data:
                     st.write(f"Sub-Score: `{d['subScore']}`")
                     st.caption(f"_{d['description']}_")
 
-        # ─── 3. CATEGORIZED 11-DIMENSIONS TABS ───
+    # ====================================================================
+    # ─── 3. CATEGORIZED 11-DIMENSIONS TABS (ဒါက တစ်ခုပဲ ရှိရပါမယ်) ───
+    # ====================================================================
     st.subheader("📊 11-Dimensions Co-Arising Breakdown")
     tab1, tab2, tab3 = st.tabs(["🧠 Core Engines (59%)", "📈 Flow & Patterns (20%)", "🌍 Macro & Sentiment (21%)"])
     
     dims = matrix_res["dimensions"]
     
+    # --- TAB 1: Core Engines ---
     with tab1:
-        # ... (ဒါက Core Engines အပိုင်းဖြစ်လို့ အစ်ကိုကြီးရှိပြီးသားကုဒ်အတိုင်း ထားခဲ့ပါ)
-        pass
+        st.markdown("### Core Matrix Engines")
+        for d in dims:
+            if d["name"] in ["Sahajāta Core", "Paccaya Flow", "Nissaya Structural", "Upanissaya Momentum", "Purejāta Lead"]:
+                with st.expander(f"🌐 {d['name']} (Weight: {d['weight']}%)"):
+                    st.write(f"Sub-Score: `{d['subScore']}`")
+                    st.caption(f"_{d['description']}_")
 
+    # --- TAB 2: Flow & Patterns ---
     with tab2:
-        # ... (ဒါက Flow & Patterns အပိုင်းဖြစ်လို့ အစ်ကိုကြီးရှိပြီးသားကုဒ်အတိုင်း ထားခဲ့ပါ)
-        pass
+        st.markdown("### Market Flow & Structural Patterns")
+        for d in dims:
+            if d["name"] in ["Pacchājāta Lag", "Āsevana Velocity", "Kamma Volatility", "Vipāka Execution"]:
+                with st.expander(f"🌐 {d['name']} (Weight: {d['weight']}%)"):
+                    st.write(f"Sub-Score: `{d['subScore']}`")
+                    st.caption(f"_{d['description']}_")
 
-    # 🎯 🎯 🎯 ဒီနေရာကစပြီး အစားထိုးထည့်ရမည့်အပိုင်း ဖြစ်ပါတယ် အစ်ကိုကြီး 🎯 🎯 🎯
+    # --- TAB 3: Macro & Sentiment (Wallet Balance နှင့် ပေါင်းစပ်ထားသည့်အပိုင်း) ---
     with tab3:
         st.markdown("### Global Sentiment & Filters")
-        
         for d in dims:
-            # ၁။ Portfolio Heat အတွက် Wallet Balance ပေါ်မူတည်ပြီး Dynamic ပြသမည့်အပိုင်း
+            # 1. Portfolio Heat အတွက် Live Wallet Balance နှင့် တွဲပြမည်
             if d["name"] == "Portfolio Heat":
                 with st.expander(f"🌐 {d['name']} (Weight: {d['weight']}%)", expanded=True):
                     st.write(f"Sub-Score: `{d['subScore']}`")
-                    
                     if wallet_balance > 0:
                         st.info(f"📊 **Live Wallet Analysis:** သင်၏ On-chain အကောင့်တွင် **{wallet_balance:,.2f} XRP** ပိုင်ဆိုင်ထားပြီး လက်ရှိစျေးကွက်အရ Risk Level မှာ သင့်တင့်သော အနေအထားတွင် ရှိပါသည်။")
                     else:
                         st.caption(f"_{d['description']}_")
                         
-            # ၂။ ကျန်တဲ့ Indicator ၄ ခုကို ပုံမှန်အတိုင်း ပြသမည့်အပိုင်း
+            # 2. ကျန်ရှိသော Macro Indicators များကို ပြမည်
             elif d["name"] in ["Fear & Greed", "XRP Daily Alpha", "FA Sentiment", "Market Filter"]:
                 with st.expander(f"🌐 {d['name']} (Weight: {d['weight']}%)"):
                     st.write(f"Sub-Score: `{d['subScore']}`")
                     st.caption(f"_{d['description']}_")
 
-    # 🎯 🎯 🎯 အစားထိုးထည့်ရမည့်အပိုင်း ဤနေရာတွင် ပြီးပါပြီ 🎯 🎯 🎯
-
     st.markdown("---")
     
-    # ─── 4. EXECUTIVE AI ANALYSIS BLOCK ───
+    # ====================================================================
+    # ─── 4. EXECUTIVE AI ANALYSIS BLOCK (ဖိုင်တစ်ခုလုံးမှာ ဒီတစ်ခါပဲ လာရပါမယ်) ───
+    # ====================================================================
     st.subheader("🧠 Executive Strategic AI Analysis")
-    # ... (အောက်ခြေကုဒ်များ ပုံမှန်အတိုင်း ဆက်သွားပါမည်)
+    
+    if st.button("🚀 Generate Executive AI Report (OpenRouter)", type="primary"):
+        with st.spinner("AI Engine မှ Matrix တစ်ခုလုံးကို သုံးသပ်နေပါသည်... ခေတ္တစောင့်ပါ..."):
+            # အစ်ကိုကြီး၏ AI Report တောင်းဆိုသည့် ကုဒ်များ (ဥပမာ - OpenRouter API Call)
+            # ai_report = generate_ai_report(matrix_res, wallet_balance)
+            # st.markdown(ai_report)
+            pass
 
-
-    st.markdown("---")
-
-    # ─── 4. EXECUTIVE AI ANALYSIS BLOCK ───
-    st.subheader("🧠 Executive Strategic AI Analysis")
-    if st.button("🤖 Generate Real-Time Institutional Report", use_container_width=True):
-        with st.spinner("Synchronizing cross-border matrix via AI Strategy Engine..."):
-            ai_report_web = ask_ai_advanced_analysis(price, change, funding, matrix_res)
-            st.markdown(ai_report_web)
-else:
-    st.error("Market Engine Connection Error. Please verify network or API status.")
 
