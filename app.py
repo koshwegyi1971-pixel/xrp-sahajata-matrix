@@ -427,11 +427,12 @@ def start_global_services():
 
 start_global_services()
 
-# 💻 9. STREAMLIT WEB DASHBOARD UI
-st.title("☸️ Sahajāta Confluence Matrix Dashboard")
+# 💻 9. STREAMLIT WEB DASHBOARD UI (Institutional Style V3)
+st.title("☸️ Sahajāta Confluence Matrix")
 st.caption("Institutional Quantitative Engine for XRP Accumulation (Paṭṭhāna Logic V3)")
 
-if st.button("🔄 Refresh Live Market Data", type="primary"):
+# Refresh Button
+if st.button("🔄 Refresh Live Market Data", type="primary", use_container_width=True):
     st.rerun()
 
 market_data = get_xrp_advanced_data()
@@ -440,51 +441,70 @@ if market_data:
     price, high, low, change, source, funding, ctx = market_data
     matrix_res = compute_sahajata_score(ctx)
 
-    # Main Metrics Grid
-    col1, col2, col3, col4 = st.columns(4)
-    col1.metric("💵 XRP Price", f"${price:.4f}", f"{change:+.2f}%")
-    col2.metric("📊 Data Completeness", f"{matrix_res['dataCompleteness']*100:.0f}%")
-    col3.metric("⏳ Funding Rate", funding)
-    col4.metric("⚙️ Source Layer", source)
+    # ─── 1. HERO SECTION (Main Metrics Grid) ───
+    m1, m2, m3 = st.columns(3)
+    m1.metric("💵 XRP Price", f"${price:.4f}", f"{change:+.2f}%")
+    m2.metric("⏳ Funding Rate", funding)
+    m3.metric("📊 Data Sync", f"{matrix_res['dataCompleteness']*100:.0f}%")
 
     st.markdown("---")
 
-    # Sahajata Core Matrix Panel
-    st.subheader("☸️ Confluence Analysis & Dynamic Sizing Matrix")
-    st.markdown(f"**Sahajāta Confluence Score (SCS):** `{matrix_res['score']} / 100`")
+    # ─── 2. CORE MATRIX SCORE PANEL ───
+    st.markdown(f"### ☸️ Sahajāta Confluence Score: `{matrix_res['score']} / 100`")
     st.progress(matrix_res['score'] / 100)
     
+    # Dynamic State Banner
     st.markdown(
-        f"<div style='background-color:{matrix_res['color']}; padding:15px; border-radius:8px; text-align:center; color:white; font-weight:bold; font-size:20px;'>"
-        f"STATE: {matrix_res['label']} ({matrix_res['multiplier']}x Allocation Modulator)"
+        f"<div style='background-color:{matrix_res['color']}; padding:16px; border-radius:10px; text-align:center; color:white; font-weight:bold; font-size:22px; margin-bottom:25px;'>"
+        f"STATE: {matrix_res['label']} ({matrix_res['multiplier']}x Position Sizing)"
         f"</div>", 
         unsafe_allow_html=True
     )
 
-    st.markdown(" ")
-
-    # Detailed 11-Indicators Breakdown Grid Layout
+    # ─── 3. CATEGORIZED 11-DIMENSIONS TABS (ဖုန်းအတွက် အထူးအဆင်ပြေမည့်စနစ်) ───
     st.subheader("📊 11-Dimensions Co-Arising Breakdown")
+    tab1, tab2, tab3 = st.tabs(["🧠 Core Engines (59%)", "📈 Flow & Patterns (20%)", "🌍 Macro & Sentiment (21%)"])
     
-    # Render Dimensions cleanly in columns
     dims = matrix_res["dimensions"]
-    for i in range(0, len(dims), 3):
-        cols = st.columns(3)
-        for idx, col in enumerate(cols):
-            if i + idx < len(dims):
-                d = dims[i + idx]
-                with col:
-                    st.info(f"**{d['name']}** (Weight: {d['weight']}%)")
-                    st.write(f"Score: `{d['subScore'] if d['subScore'] is not None else 'N/A'}`")
+    
+    with tab1:
+        st.markdown("### Primary Market Matrix")
+        # Core Engines ၄ ခုကို ပြသခြင်း
+        core_names = ["AI Regime", "Multi-TF RSI Confluence", "SmartScore", "Market Structure"]
+        for d in dims:
+            if d["name"] in core_names:
+                with st.expander(f"🔹 {d['name']} (Weight: {d['weight']}%)", expanded=True):
+                    st.write(f"Sub-Score: `{d['subScore']}`")
+                    st.caption(f"_{d['description']}_")
+
+    with tab2:
+        st.markdown("### Execution & Order Flow")
+        # Flow Engines ၂ ခုကို ပြသခြင်း
+        flow_names = ["Order Flow", "Candlestick Pattern"]
+        for d in dims:
+            if d["name"] in flow_names:
+                with st.expander(f"🔸 {d['name']} (Weight: {d['weight']}%)", expanded=True):
+                    st.write(f"Sub-Score: `{d['subScore']}`")
+                    st.caption(f"_{d['description']}_")
+
+    with tab3:
+        st.markdown("### Global Sentiment & Filters")
+        # Macro & Sentiment ၅ ခုကို ပြသခြင်း
+        macro_names = ["Fear & Greed", "Portfolio Heat", "XRP Daily Alpha", "FA Sentiment", "Market Filter"]
+        for d in dims:
+            if d["name"] in macro_names:
+                with st.expander(f"🌐 {d['name']} (Weight: {d['weight']}%)", expanded=True):
+                    st.write(f"Sub-Score: `{d['subScore']}`")
                     st.caption(f"_{d['description']}_")
 
     st.markdown("---")
 
-    # Executive AI Analysis Block
+    # ─── 4. EXECUTIVE AI ANALYSIS BLOCK ───
     st.subheader("🧠 Executive Strategic AI Analysis")
-    if st.button("🤖 Generate Real-Time Institutional Report"):
+    if st.button("🤖 Generate Real-Time Institutional Report", use_container_width=True):
         with st.spinner("Synchronizing cross-border matrix via AI Strategy Engine..."):
             ai_report_web = ask_ai_advanced_analysis(price, change, funding, matrix_res)
             st.markdown(ai_report_web)
 else:
     st.error("Market Engine Connection Error. Please verify network or API status.")
+
