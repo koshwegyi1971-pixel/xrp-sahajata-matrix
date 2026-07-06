@@ -419,31 +419,31 @@ def telegram_analyze(message):
     except Exception: bot.reply_to(message, ai_report)
 
 # 🌐 8. BACKGROUND CO-RUNNER INITIALIZATION (The Secret Sauce)
-@st.cache_resource
-def start_global_services():
-    try:
-        # ၁။ ယခင်က Webhook လမ်းကြောင်းတစ်ခုခု ငြိနေရင် လုံးဝ အရင်ရှင်းပစ်မယ်
-        bot.remove_webhook()
-        time.sleep(1)
+#@st.cache_resource
+#def start_global_services():    
+#try:
+# ၁။ ယခင်က Webhook လမ်းကြောင်းတစ်ခုခု ငြိနေရင် လုံးဝ အရင်ရှင်းပစ်မယ်
+#       bot.remove_webhook()
+#       time.sleep(1)
         
-        # ၂။ Streamlit Container ထဲမှာ Polling အဟောင်း ကျန်ခဲ့ရင် အရင်ရပ်ပစ်မယ်
-        bot.stop_polling()
-        time.sleep(1)
-    except Exception:
-        pass
+#        # ၂။ Streamlit Container ထဲမှာ Polling အဟောင်း ကျန်ခဲ့ရင် အရင်ရပ်ပစ်မယ်
+#        bot.stop_polling()
+#        time.sleep(1)
+#    except Exception:
+#        pass
 
-    # ၃။ Thread အသစ်နဲ့ စိတ်ချရအောင် Polling ကို ပြန်စမောင်းမယ်
-    # skip_pending=True ထည့်ထားလို့ Bot ပိတ်ထားတုန်းက ဝင်နေတဲ့ မက်ဆေ့ခ်ျဟောင်းတွေကို ကျော်သွားပါလိမ့်မယ်
-    t1 = threading.Thread(target=bot.infinity_polling, kwargs={"skip_pending": True}, daemon=True)
-    t1.start()
+#    # ၃။ Thread အသစ်နဲ့ စိတ်ချရအောင် Polling ကို ပြန်စမောင်းမယ်
+#    # skip_pending=True ထည့်ထားလို့ Bot ပိတ်ထားတုန်းက ဝင်နေတဲ့ မက်ဆေ့ခ်ျဟောင်းတွေကို ကျော်သွားပါလိမ့်မယ်
+#    t1 = threading.Thread(target=bot.infinity_polling, kwargs={"skip_pending": True}, daemon=True)
+#    t1.start()
     
-    t2 = threading.Thread(target=price_alert_monitor, daemon=True)
-    t2.start()
+#    t2 = threading.Thread(target=price_alert_monitor, daemon=True)
+#    t2.start()
     
-    return True
+#    return True
 
 # ပင်မ ဝန်ဆောင်မှုများကို စတင်နှိုးဆော်ခြင်း
-start_global_services()
+#start_global_services()
 
 
 # 💻 9. STREAMLIT WEB DASHBOARD UI (Institutional Style V3)
