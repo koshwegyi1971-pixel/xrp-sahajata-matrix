@@ -327,6 +327,37 @@ def get_xrp_advanced_data():
     }
 
     return price, high, low, change, source, funding_rate, ctx
+    def get_xrpl_wallet_balance(wallet_address):
+    """
+    XRPL Public RPC မှတစ်ဆင့် ပေးထားသော Address ၏ Live XRP Balance ကို ဆွဲယူပေးသည့် လုပ်ဆောင်ချက်
+    """
+    if not wallet_address or not wallet_address.startswith('r'):
+        return 0.0
+        
+    url = "https://xrplcluster.com/"  # Public XRPL RPC Endpoint
+    headers = {"Content-Type": "application/json"}
+    payload = {
+        "method": "account_info",
+        "params": [
+            {
+                "account": wallet_address,
+                "ledger_index": "validated"
+            }
+        ]
+    }
+    
+    try:
+        response = requests.post(url, headers=headers, json=payload, timeout=10)
+        data = response.json()
+        
+        if "result" in data and "account_data" in data["result"]:
+            # XRPL သည် Balance ကို Drops ယူနစ်ဖြင့်ပြသသဖြင့် 1,000,000 ဖြင့် ပြန်စားရပါသည် (1 XRP = 1,000,000 Drops)
+            balance_drops = int(data["result"]["account_data"]["Balance"])
+            return balance_drops / 1000000.0
+    except Exception as e:
+        print(f"XRPL Balance Fetch Error: {e}")
+        
+    return 0.0
 
 # 🧠 5. OpenRouter AI Core
 def ask_ai_advanced_analysis(price, change, funding, matrix_res):
