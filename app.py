@@ -534,34 +534,39 @@ if market_data:
         f"</div>", 
         unsafe_allow_html=True
     )
-    # ====================================================================
-    # ─── 🔗 XRPL LIVE WALLET CONNECTION ───
+    
+        # ====================================================================
+    # ─── 🔗 XRPL LIVE WALLET CONNECTION (Memory Locking စနစ်) ───
     # ====================================================================
     st.sidebar.markdown("---")
     st.sidebar.header("⚙️ XRPL Wallet Configuration")
     
-    # ၁။ Sidebar တွင် Wallet Address ရိုက်ထည့်ရန် Input Box ဖန်တီးခြင်း
-    # (အစ်ကိုကြီး စမ်းသပ်ရလွယ်အောင် value="" နေရာမှာ မိမိ XRP Address ကို တစ်ခါတည်း ကြိုထည့်ထားပေးလို့ရပါတယ်)
+    # ၁။ Streamlit Memory (Session State) ထဲတွင် Address ကို အမြဲမှတ်မိနေစေရန် ကုဒ်တိုက်ခြင်း
+    if "saved_wallet" not in st.session_state:
+        st.session_state.saved_wallet = ""
+
+    # ၂။ key="persistent_wallet" ကိုသုံးပြီး Box ထဲကစာကို ခိုင်မြဲအောင် သတ်မှတ်ခြင်း
     wallet_address = st.sidebar.text_input(
         "Enter XRP Wallet Address (r...)", 
-        value="", 
+        value=st.session_state.saved_wallet,
+        key="persistent_wallet",  # 👈 ဒါက Streamlit ကို အမြဲမှတ်မိနေစေမည့် Unique Key ဖြစ်ပါတယ်
         placeholder="rMv... ဆိုသော လိပ်စာကို ရိုက်ထည့်ပါ"
     )
     
-    # ၂။ Address ရှိမရှိ စစ်ဆေးပြီး Live Balance ကို ဆွဲယူခြင်း
-    if wallet_address and wallet_address.startswith('r'):
+    # ၃။ ရိုက်ထည့်လိုက်သည့် ဒေတာကို Memory ထဲသို့ ထိန်းသိမ်းသိမ်းဆည်းခြင်း
+    st.session_state.saved_wallet = wallet_address
+    
+    # ၄။ Address ရှိမရှိ စစ်ဆေးပြီး Live Balance ဆွဲယူခြင်း
+    if wallet_address and wallet_address.strip().startswith('r'):
         with st.sidebar.spinner("XRPL မှ Live Balance ကို ဆွဲယူနေပါသည်..."):
-            wallet_balance = get_xrpl_wallet_balance(wallet_address)
-        
-        # Balance အောင်မြင်စွာရပါက Sidebar တွင် အစိမ်းရောင် Box ဖြင့် ပြသမည်
+            wallet_balance = get_xrpl_wallet_balance(wallet_address.strip())
         st.sidebar.success(f"💰 Live Balance: {wallet_balance:,.2f} XRP")
     else:
-        # Address မထည့်ရသေးပါက Balance ကို 0.0 အဖြစ် သတ်မှတ်ထားမည်
         wallet_balance = 0.0
         st.sidebar.info("💡 သင်၏ Live XRP Balance ကို ကြည့်လိုပါက Wallet Address ရိုက်ထည့်ပါ။")
 
     st.sidebar.markdown("---")
-    # ====================================================================
+    
     # ====================================================================
     # ─── 3. CATEGORIZED 11-DIMENSIONS TABS (Index-Based Perfect Split) ───
     # ====================================================================
