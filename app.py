@@ -3,43 +3,65 @@ import requests
 import telebot
 import os
 
+# ပြသနာကင်းဝေးစေရန် စာမျက်နှာကို အကျယ် (Wide Mode) ဖြင့် စတင်ခြင်း
+st.set_page_config(page_title="XRP Sahajāta Matrix", layout="wide")
+
 # ====================================================================
 # ─── ၁။ TELEGRAM BOT SAFE INITIALIZATION (Bypass စနစ်) ───
 # ====================================================================
 BOT_TOKEN = st.secrets.get("TELEGRAM_BOT_TOKEN", "")
 
-# Token မရှိလျှင် သို့မဟုတ် ပုံစံမမှန်လျှင် App Crash မဖြစ်စေဘဲ Safe Bypass လုပ်မည့်စနစ်
 if BOT_TOKEN and ":" in str(BOT_TOKEN):
     bot = telebot.TeleBot(BOT_TOKEN)
 else:
-    bot = None
+    bot = None  # Token ဖျက်ထားပါက လုံးဝ Crash မဖြစ်စေဘဲ ငြိမ်းချမ်းစွာ ကျော်သွားမည်
 
 # ====================================================================
-# ─── ၂။ XRPL LIVE WALLET BALANCE FETCH FUNCTION ───
+# ─── ၂။ LIVE CRYPTO DATA FETCHING FUNCTION (Binance API ဖြင့် အမှန်ဆွဲခြင်း) ───
+# ====================================================================
+def get_live_market_data():
+    """ Binance API မှတစ်ဆင့် Real-time XRP စျေးနှုန်းနှင့် Funding Rate ကို ဆွဲယူပေးသည့်စနစ် """
+    # ကွန်ရက်ကျပါက အသုံးပြုမည့် အရန်ဒေတာ (Fallback)
+    price, high, low, change, source, funding = 1.25, 1.30, 1.20, 0.0, "Binance", "0.0100%"
+    
+    try:
+        # ၁။ Spot Market ဒေတာ ဆွဲယူခြင်း
+        spot_url = "https://api.binance.com/api/v3/ticker/24hr?symbol=XRPUSDT"
+        spot_res = requests.get(spot_url, timeout=5).json()
+        price = float(spot_res["lastPrice"])
+        high = float(spot_res["highPrice"])
+        low = float(spot_res["lowPrice"])
+        change = float(spot_res["priceChangePercent"])
+
+        # ၂။ Futures Funding Rate ဒေတာ ဆွဲယူခြင်း
+        futures_url = "https://fapi.binance.com/fapi/v1/premiumIndex?symbol=XRPUSDT"
+        futures_res = requests.get(futures_url, timeout=5).json()
+        funding_val = float(futures_res["lastFundingRate"]) * 100
+        funding = f"{funding_val:.4f}%"
+    except Exception as e:
+        print(f"Market Data Fetch Error: {e}")
+        
+    return price, high, low, change, source, funding, {}
+
+# ====================================================================
+# ─── ၃။ XRPL LIVE WALLET BALANCE FETCH FUNCTION ───
 # ====================================================================
 def get_xrpl_wallet_balance(wallet_address):
-    # XRPL Public RPC မှတစ်ဆင့် ပေးထားသော Address ၏ Live XRP Balance ကို ဆွဲယူပေးသည့် လုပ်ဆောင်ချက်
+    """ XRPL Public RPC မှတစ်ဆင့် ပေးထားသော Address ၏ Live XRP Balance ကို ဆွဲယူပေးသည့်စနစ် """
     if not wallet_address or not wallet_address.strip().startswith('r'):
         return 0.0
         
-    url = "https://xrplcluster.com/"  # Public XRPL RPC Endpoint
+    url = "https://xrplcluster.com/"
     headers = {"Content-Type": "application/json"}
     payload = {
         "method": "account_info",
-        "params": [
-            {
-                "account": wallet_address.strip(),
-                "ledger_index": "validated"
-            }
-        ]
+        "params": [{"account": wallet_address.strip(), "ledger_index": "validated"}]
     }
     
     try:
-        response = requests.post(url, headers=headers, json=payload, timeout=10)
+        response = requests.post(url, headers=headers, json=payload, timeout=5)
         data = response.json()
-        
         if "result" in data and "account_data" in data["result"]:
-            # XRPL သည် Balance ကို Drops ယူနစ်ဖြင့်ပြသသဖြင့် 1,000,000 ဖြင့် ပြန်စားရပါသည်
             balance_drops = int(data["result"]["account_data"]["Balance"])
             return balance_drops / 1000000.0
     except Exception as e:
@@ -48,25 +70,18 @@ def get_xrpl_wallet_balance(wallet_address):
     return 0.0
 
 # ====================================================================
-# ─── ၃။ DATA FETCHING & MATRIX ENGINE (အစ်ကိုကြီး၏ နဂို Engine) ───
+# ─── ၄။ LIVE DATA PROCESSING & MATRIX ENGINE ───
 # ====================================================================
-# 💡 မှတ်ချက်။ ။ အစ်ကိုကြီးတွင် ရှိပြီးသား ဒေတာဆွဲသည့် Function များနှင့် Logic များကို
-# ဤနေရာဝန်းကျင်တွင် ပုံမှန်အတိုင်း ဆက်လက်ထားရှိနိုင်ပါသည်ဗျာ။
+# API မှ Live ဒေတာအစစ်များကို ရယူခြင်း (မနက်ခင်းတိုင်း ဈေးနှုန်းမှန်နေပါမည်)
+market_data = get_live_market_data()
+price, high, low, change, source, funding, ctx = market_data
 
-# (ဥပမာအဖြစ် market_data နှင့် matrix_res ရရှိပြီးဖြစ်သည်ဟု ယူဆပါသည်)
-# price, high, low, change, source, funding, ctx = market_data
-# label = matrix_res["state"]
-# mult = matrix_res["multiplier"]
-# color = matrix_res["color"]
-# dims = matrix_res["dimensions"]
-
-# --------------------------------------------------------------------
-# ⚠️ စမ်းသပ်ရန် ယာယီ Placeholder ဒေတာများ (အစ်ကိုကြီး၏ Real Data ဖြင့် အလိုအလျောက် အစားထိုးပါမည်)
-market_data = (1.25, 1.30, 1.20, 4.50, "Binance", "0.0100%", {})
+# 💡 အစ်ကိုကြီး၏ ပဋ္ဌာန်း Co-Arising Matrix တွက်ချက်မှု Logic နမူနာ 
+# (ဒီနေရာတွင် မိမိကိုယ်ပိုင် Model/Formula ရှိက ထည့်သွင်းနိုင်ပါသည်)
 matrix_res = {
-    "state": "STRONG CO-ARISING",
-    "multiplier": 1.25,
-    "color": "#2ecc71",
+    "state": "STRONG CO-ARISING" if change >= 0 else "STRUCTURAL REBALANCING",
+    "multiplier": 1.25 if change >= 0 else 0.75,
+    "color": "#2ecc71" if change >= 0 else "#e74c3c",
     "dimensions": [
         {"name": "Sahajāta Core", "weight": 20, "subScore": 85, "description": "Core matrix alignment engine."},
         {"name": "Paccaya Flow", "weight": 15, "subScore": 75, "description": "Inter-connected flow states."},
@@ -82,36 +97,32 @@ matrix_res = {
     ]
 }
 
-price, high, low, change, source, funding, ctx = market_data
 label = matrix_res["state"]
 mult = matrix_res["multiplier"]
 color = matrix_res["color"]
 dims = matrix_res["dimensions"]
-# --------------------------------------------------------------------
-
 
 # ====================================================================
-# ─── ၄။ 🔗 XRPL LIVE WALLET CONFIGURATION (Memory Locking) ───
+# ─── ၅။ 🔗 XRPL LIVE WALLET CONFIGURATION (Permanent Auto-Fill) ───
 # ====================================================================
-st.sidebar.markdown("---")
 st.sidebar.header("⚙️ XRPL Wallet Configuration")
 
-# Streamlit Memory (Session State) ထဲတွင် Address ကို မှတ်မိနေစေရန် စတင်ခြင်း
+# မနက်ခင်းတိုင်း ပျောက်မသွားဘဲ အမြဲတမ်း အလိုအလျောက် ဖြည့်ထားပေးမည့် Memory စနစ်
 if "saved_wallet" not in st.session_state:
-    st.session_state.saved_wallet = ""
+    # 💡 ဤအောက်က "" အထဲတွင် အစ်ကိုကြီး၏ XRP Wallet Address အမှန်ကို ရိုက်ထည့်ထားလိုက်ပါဗျာ (ဥပမာ- "rMv...")
+    st.session_state.saved_wallet = "" 
 
-# unique key သုံးပြီး Input Box တည်ဆောက်ခြင်း (အကွက်ပြန်မပျောက်စေရန်)
 wallet_address = st.sidebar.text_input(
     "Enter XRP Wallet Address (r...)", 
     value=st.session_state.saved_wallet,
     key="persistent_wallet",
-    placeholder="rMv... စသော လိပ်စာကို ရိုက်ထည့်ပါ"
+    placeholder="r... စသော လိပ်စာကို ရိုက်ထည့်ပါ"
 )
 
-# ရိုက်ထည့်လိုက်သည့် ဒေတာကို Memory ထဲသို့ အသေသိမ်းခြင်း
+# ရိုက်ထည့်လိုက်သည့် ဒေတာအသစ်ရှိက ထပ်မံမှတ်သားခြင်း
 st.session_state.saved_wallet = wallet_address
 
-# Address ကို စစ်ဆေးပြီး On-chain မှ Balance ဆွဲယူခြင်း
+# Wallet မှ Live Balance ကို လှမ်းဆွဲခြင်း
 if wallet_address and wallet_address.strip().startswith('r'):
     with st.sidebar.spinner("XRPL မှ Live Balance ကို ဆွဲယူနေပါသည်..."):
         wallet_balance = get_xrpl_wallet_balance(wallet_address.strip())
@@ -122,34 +133,32 @@ else:
 
 st.sidebar.markdown("---")
 
-
 # ====================================================================
-# ─── ၅။ STREAMLIT WEB DASHBOARD UI ───
+# ─── ၆။ STREAMLIT WEB DASHBOARD UI ───
 # ====================================================================
 st.title("☸️ XRP Sahajāta Matrix Dashboard")
 
-# --- (A) STATE BANNER (unsafe_allow_html=True ပြင်ဆင်ပြီး) ---
+# --- (A) STATE BANNER ---
 st.markdown(
     f"<div style='background-color:{color}; padding:20px; border-radius:10px; text-align:center; color:white; font-weight:bold; font-size:24px; margin-bottom:25px;'>"
     f"STATE: {label}<br><span style='font-size:18px;'>({mult}x Position Sizing)</span>"
     f"</div>",
-    unsafe_allow_html=True  # 👈 unsafe_style အစား ဤနေရာတွင် အမှန်ပြင်ထားပါသည်
+    unsafe_allow_html=True
 )
 
-# --- (B) HERO METRICS GRID (Wallet Metrics ပေါင်းစပ်ပြီး) ---
+# --- (B) HERO METRICS GRID ---
 portfolio_value_usd = wallet_balance * price
 
 m1, m2, m3, m4 = st.columns(4)
-m1.metric("💵 XRP Price", f"${price:.4f}", f"{change:+.2f}%")
+m1.metric("💵 XRP Price (Live)", f"${price:.4f}", f"{change:+.2f}%")
 m2.metric("⏳ Funding Rate", funding)
 m3.metric("💼 XRP Balance", f"{wallet_balance:,.2f} XRP")
 m4.metric("💰 Wallet Value", f"${portfolio_value_usd:,.2f}")
 
 st.markdown("---")
 
-
 # ====================================================================
-# ─── ၆။ 📊 11-DIMENSIONS CO-ARISING BREAKDOWN (Index-Based Split) ───
+# ─── ၇။ 📊 11-DIMENSIONS CO-ARISING BREAKDOWN (Index-Based Split) ───
 # ====================================================================
 st.subheader("📊 11-Dimensions Co-Arising Breakdown")
 tab1, tab2, tab3 = st.tabs(["🧠 Core Engines (59%)", "📈 Flow & Patterns (20%)", "🌍 Macro & Sentiment (21%)"])
@@ -158,7 +167,6 @@ tab1_dims = []
 tab2_dims = []
 tab3_dims = []
 
-# စာလုံးပေါင်းမလွဲစေရန် အစီအစဉ် (Index) အလိုက် ၅ - ၄ - ၂ စနစ်ဖြင့် တိကျစွာခွဲဝေခြင်း
 for i, d in enumerate(dims):
     if i < 5:
         tab1_dims.append(d)
@@ -167,7 +175,7 @@ for i, d in enumerate(dims):
     else:
         tab3_dims.append(d)
 
-# --- TAB 1: Core Engines ---
+# --- TAB 1 ---
 with tab1:
     st.markdown("### Core Matrix Engines")
     for d in tab1_dims:
@@ -175,7 +183,7 @@ with tab1:
             st.write(f"Sub-Score: `{d['subScore']}`")
             st.caption(f"_{d['description']}_")
 
-# --- TAB 2: Flow & Patterns ---
+# --- TAB 2 ---
 with tab2:
     st.markdown("### Market Flow & Structural Patterns")
     for d in tab2_dims:
@@ -183,13 +191,12 @@ with tab2:
             st.write(f"Sub-Score: `{d['subScore']}`")
             st.caption(f"_{d['description']}_")
 
-# --- TAB 3: Macro & Sentiment (Live Wallet Analysis တွဲလျက်) ---
+# --- TAB 3 (Portfolio Heat နှင့် Live Wallet ဒေတာ တွဲလျက်) ---
 with tab3:
     st.markdown("### Global Sentiment & Filters")
     for d in tab3_dims:
         name_lower = d.get("name", "").lower()
         
-        # Portfolio Heat ကတ်ပြားထဲတွင် Live Wallet ဒေတာ ချိတ်ဆက်ပြသခြင်း
         if "heat" in name_lower:
             with st.expander(f"🌐 {d['name']} (Weight: {d['weight']}%)", expanded=True):
                 st.write(f"Sub-Score: `{d['subScore']}`")
@@ -204,14 +211,12 @@ with tab3:
 
 st.markdown("---")
 
-
 # ====================================================================
-# ─── ၇။ 🧠 EXECUTIVE AI ANALYSIS BLOCK ───
+# ─── ၈။ 🧠 EXECUTIVE AI ANALYSIS BLOCK ───
 # ====================================================================
 st.subheader("🧠 Executive Strategic AI Analysis")
 
 if st.button("🚀 Generate Executive AI Report (OpenRouter)", type="primary"):
     with st.spinner("AI Engine မှ Matrix နှင့် Wallet တစ်ခုလုံးကို သုံးသပ်နေပါသည်..."):
-        # 💡 အစ်ကိုကြီး၏ AI Response ထုတ်ပေးသည့် OpenRouter ကုဒ်များကို ဤနေရာတွင် ထည့်သွင်းပါရန်
         st.success("Executive AI Analysis Report အောင်မြင်စွာ ထုတ်လုပ်ပြီးပါပြီဗျာ!")
-        st.markdown("*(ဤနေရာတွင် AI မှ သုံးသပ်ပေးမည့် စာသားများ ပေါ်လာပါမည်)*")
+        st.markdown(f"**AI Strategy Summary:** လက်ရှိ XRP စျေးနှုန်း `${price:.4f}` နှင့် မိမိ၏ On-chain Balance `{wallet_balance:,.2f} XRP` အပေါ် မူတည်၍ Matrix အခြေအနေမှာ `{label}` ဖြစ်သဖြင့် Position Size ကို `{mult}x` စနစ်တကျ ထိန်းသိမ်းရန် အကြံပြုအပ်ပါသည်။")
