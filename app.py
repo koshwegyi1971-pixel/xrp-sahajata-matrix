@@ -110,7 +110,7 @@ st.sidebar.header("⚙️ XRPL Wallet Configuration")
 # မနက်ခင်းတိုင်း ပျောက်မသွားဘဲ အမြဲတမ်း အလိုအလျောက် ဖြည့်ထားပေးမည့် Memory စနစ်
 if "saved_wallet" not in st.session_state:
     # 💡 ဤအောက်က "" အထဲတွင် အစ်ကိုကြီး၏ XRP Wallet Address အမှန်ကို ရိုက်ထည့်ထားလိုက်ပါဗျာ (ဥပမာ- "rMv...")
-    st.session_state.saved_wallet = "" 
+    st.session_state.saved_wallet = "ra95mZHQzFp3Vd5YYgm8CEWERSD1pGQKvL" 
 
 wallet_address = st.sidebar.text_input(
     "Enter XRP Wallet Address (r...)", 
