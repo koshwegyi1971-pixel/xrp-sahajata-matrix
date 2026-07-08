@@ -17,27 +17,35 @@ else:
     bot = None  # Token ဖျက်ထားပါက လုံးဝ Crash မဖြစ်စေဘဲ ငြိမ်းချမ်းစွာ ကျော်သွားမည်
 
 # ====================================================================
-# ─── ၂။ LIVE CRYPTO DATA FETCHING FUNCTION (Binance API ဖြင့် အမှန်ဆွဲခြင်း) ───
+# ─── ၂။ LIVE CRYPTO DATA FETCHING FUNCTION (Cloud-Friendly API) ───
 # ====================================================================
 def get_live_market_data():
-    """ Binance API မှတစ်ဆင့် Real-time XRP စျေးနှုန်းနှင့် Funding Rate ကို ဆွဲယူပေးသည့်စနစ် """
+    """ CryptoCompare API ကို အသုံးပြု၍ Cloud Server များပေါ်တွင် XRP စျေးနှုန်းကို စိတ်ချရစွာ ဆွဲယူသည့်စနစ် """
     # ကွန်ရက်ကျပါက အသုံးပြုမည့် အရန်ဒေတာ (Fallback)
-    price, high, low, change, source, funding = 1.25, 1.30, 1.20, 0.0, "Binance", "0.0100%"
+    price, high, low, change, source, funding = 1.25, 1.30, 1.20, 0.0, "CryptoCompare", "0.0100%"
     
     try:
-        # ၁။ Spot Market ဒေတာ ဆွဲယူခြင်း
-        spot_url = "https://api.binance.com/api/v3/ticker/24hr?symbol=XRPUSDT"
-        spot_res = requests.get(spot_url, timeout=5).json()
-        price = float(spot_res["lastPrice"])
-        high = float(spot_res["highPrice"])
-        low = float(spot_res["lowPrice"])
-        change = float(spot_res["priceChangePercent"])
-
-        # ၂။ Futures Funding Rate ဒေတာ ဆွဲယူခြင်း
-        futures_url = "https://fapi.binance.com/fapi/v1/premiumIndex?symbol=XRPUSDT"
-        futures_res = requests.get(futures_url, timeout=5).json()
-        funding_val = float(futures_res["lastFundingRate"]) * 100
-        funding = f"{funding_val:.4f}%"
+        # CryptoCompare Multi-Full API မှ ဈေးနှုန်း၊ အမြင့်ဆုံး၊ အနိမ့်ဆုံးနှင့် ပြောင်းလဲမှု ရာခိုင်နှုန်းကို တစ်ခါတည်းဆွဲခြင်း
+        url = "https://min-api.cryptocompare.com/data/pricemultifull?fsyms=XRP&tsyms=USDT"
+        res = requests.get(url, timeout=5).json()
+        
+        if "RAW" in res and "XRP" in res["RAW"] and "USDT" in res["RAW"]["XRP"]:
+            data = res["RAW"]["XRP"]["USDT"]
+            price = float(data["PRICE"])
+            high = float(data["HIGH24HOUR"])
+            low = float(data["LOW24HOUR"])
+            change = float(data["CHANGEPCT24HOUR"])
+            source = "CryptoCompare Live"
+            
+        # Futures Funding Rate (Binance က ပိတ်ထားပါက Auto-Fallback လုပ်မည့်စနစ်)
+        try:
+            futures_url = "https://fapi.binance.com/fapi/v1/premiumIndex?symbol=XRPUSDT"
+            futures_res = requests.get(futures_url, timeout=3).json()
+            funding_val = float(futures_res["lastFundingRate"]) * 100
+            funding = f"{funding_val:.4f}%"
+        except:
+            funding = "0.0100% (Est.)"
+            
     except Exception as e:
         print(f"Market Data Fetch Error: {e}")
         
@@ -72,12 +80,10 @@ def get_xrpl_wallet_balance(wallet_address):
 # ====================================================================
 # ─── ၄။ LIVE DATA PROCESSING & MATRIX ENGINE ───
 # ====================================================================
-# API မှ Live ဒေတာအစစ်များကို ရယူခြင်း (မနက်ခင်းတိုင်း ဈေးနှုန်းမှန်နေပါမည်)
+# Cloud-Friendly API မှ Live ဒေတာအစစ်များကို ရယူခြင်း
 market_data = get_live_market_data()
 price, high, low, change, source, funding, ctx = market_data
 
-# 💡 အစ်ကိုကြီး၏ ပဋ္ဌာန်း Co-Arising Matrix တွက်ချက်မှု Logic နမူနာ 
-# (ဒီနေရာတွင် မိမိကိုယ်ပိုင် Model/Formula ရှိက ထည့်သွင်းနိုင်ပါသည်)
 matrix_res = {
     "state": "STRONG CO-ARISING" if change >= 0 else "STRUCTURAL REBALANCING",
     "multiplier": 1.25 if change >= 0 else 0.75,
@@ -109,8 +115,8 @@ st.sidebar.header("⚙️ XRPL Wallet Configuration")
 
 # မနက်ခင်းတိုင်း ပျောက်မသွားဘဲ အမြဲတမ်း အလိုအလျောက် ဖြည့်ထားပေးမည့် Memory စနစ်
 if "saved_wallet" not in st.session_state:
-    # 💡 ဤအောက်က "" အထဲတွင် အစ်ကိုကြီး၏ XRP Wallet Address အမှန်ကို ရိုက်ထည့်ထားလိုက်ပါဗျာ (ဥပမာ- "rMv...")
-    st.session_state.saved_wallet = "ra95mZHQzFp3Vd5YYgm8CEWERSD1pGQKvL" 
+    # 💡 အစ်ကိုကြီး အမြဲတမ်းရိုက်စရာမလိုအောင် ဤအောက်က "" အထဲတွင် မိမိ XRP Wallet Address အမှန်ကို တန်းထည့်ထားနိုင်ပါတယ်ဗျာ
+    st.session_state.saved_wallet = "" 
 
 wallet_address = st.sidebar.text_input(
     "Enter XRP Wallet Address (r...)", 
@@ -119,7 +125,6 @@ wallet_address = st.sidebar.text_input(
     placeholder="r... စသော လိပ်စာကို ရိုက်ထည့်ပါ"
 )
 
-# ရိုက်ထည့်လိုက်သည့် ဒေတာအသစ်ရှိက ထပ်မံမှတ်သားခြင်း
 st.session_state.saved_wallet = wallet_address
 
 # Wallet မှ Live Balance ကို လှမ်းဆွဲခြင်း
@@ -150,7 +155,7 @@ st.markdown(
 portfolio_value_usd = wallet_balance * price
 
 m1, m2, m3, m4 = st.columns(4)
-m1.metric("💵 XRP Price (Live)", f"${price:.4f}", f"{change:+.2f}%")
+m1.metric(f"💵 XRP Price ({source})", f"${price:.4f}", f"{change:+.2f}%")
 m2.metric("⏳ Funding Rate", funding)
 m3.metric("💼 XRP Balance", f"{wallet_balance:,.2f} XRP")
 m4.metric("💰 Wallet Value", f"${portfolio_value_usd:,.2f}")
@@ -191,7 +196,7 @@ with tab2:
             st.write(f"Sub-Score: `{d['subScore']}`")
             st.caption(f"_{d['description']}_")
 
-# --- TAB 3 (Portfolio Heat နှင့် Live Wallet ဒေတာ တွဲလျက်) ---
+# --- TAB 3 ---
 with tab3:
     st.markdown("### Global Sentiment & Filters")
     for d in tab3_dims:
